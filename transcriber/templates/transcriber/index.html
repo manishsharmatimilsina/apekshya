@@ -19,16 +19,16 @@
 
                     <div class="upload-area" id="uploadArea">
                         <div class="upload-icon">
-                            <i class="fas fa-image"></i>
+                            <i class="fas fa-images"></i>
                         </div>
                         <h5>Click to upload or drag and drop</h5>
-                        <p class="text-muted">PNG, JPG, GIF, WebP (max. 20MB)</p>
-                        <input type="file" id="imageInput" name="image" accept="image/*" style="display: none;" required>
+                        <p class="text-muted">PNG, JPG, GIF, WebP (max. 20MB per image)</p>
+                        <input type="file" id="imageInput" name="images" accept="image/*" multiple style="display: none;" required>
                     </div>
 
                     <div class="mt-4" id="fileInfo" style="display: none;">
                         <div class="alert alert-info">
-                            <strong>File Selected:</strong> <span id="fileName"></span>
+                            <strong>Files Selected:</strong> <span id="fileName"></span>
                         </div>
                     </div>
 
@@ -138,27 +138,44 @@
 
     function handleFileSelect() {
         if (imageInput.files.length > 0) {
-            const file = imageInput.files[0];
-            const fileSizeMB = file.size / (1024 * 1024);
+            let totalSize = 0;
+            let fileList = [];
+            let hasLargeFile = false;
 
-            if (fileSizeMB > 20) {
-                alert('File size exceeds 20MB. Please choose a smaller file.');
+            for (let i = 0; i < imageInput.files.length; i++) {
+                const file = imageInput.files[i];
+                const fileSizeMB = file.size / (1024 * 1024);
+                totalSize += file.size;
+
+                if (fileSizeMB > 20) {
+                    hasLargeFile = true;
+                } else {
+                    fileList.push(file.name);
+                }
+            }
+
+            if (hasLargeFile) {
+                alert('One or more files exceed 20MB. Please choose smaller files.');
                 imageInput.value = '';
                 fileInfo.style.display = 'none';
                 return;
             }
 
-            fileName.textContent = file.name + ' (' + fileSizeMB.toFixed(2) + ' MB)';
+            const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+            const fileCount = imageInput.files.length;
+            fileName.textContent = fileCount + ' file(s) selected (' + totalSizeMB + ' MB total)';
             fileInfo.style.display = 'block';
+        } else {
+            fileInfo.style.display = 'none';
         }
     }
 
     // Form submission
     uploadForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        
+
         if (imageInput.files.length === 0) {
-            alert('Please select an image file.');
+            alert('Please select at least one image file.');
             return;
         }
 

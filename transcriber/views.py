@@ -3,9 +3,11 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.core.files.base import ContentFile
 import json
+from pathlib import Path
 
-from .models import ImageTranscription
+from .models import ImageTranscription, TranscriptionImage
 from .forms import ImageUploadForm, TextFormatForm, CustomPromptForm
 from .services import TranscriptionService
 
@@ -21,47 +23,89 @@ def index(request):
 
 
 def upload_image(request):
-    """Handle image upload and transcription"""
+    """Handle multiple image uploads and transcription"""
     if request.method == 'POST':
         form = ImageUploadForm(request.POST, request.FILES)
         if form.is_valid():
             try:
-                # Save the image
-                transcription = form.save(commit=False)
-                transcription.save()
-                
-                # Process the image
-                service = TranscriptionService()
-                result = service.process_image(
-                    transcription.image.path, 
-                    capitalization_type='all',
-                    custom_prompt=transcription.custom_prompt
-                )
-                
-                if result['success']:
-                    transcription.original_text = result['original_text']
-                    transcription.formatted_text = result['uppercase_text']
-                    transcription.capitalized_text = result['uppercase_text']
-                    if result['custom_response']:
-                        transcription.custom_response = result['custom_response']
-                    transcription.is_processed = True
-                    transcription.save()
-                    
-                    messages.success(request, 'Image transcribed successfully!')
-                    return redirect('transcriber:detail', pk=transcription.id)
-                else:
-                    transcription.error_message = result['error']
-                    transcription.save()
-                    messages.error(request, f"Transcription failed: {result['error']}")
+                # Get uploaded files and custom prompt
+                files = request.FILES.getlist('images')
+                custom_prompt = form.cleaned_data.get('custom_prompt', '').strip()
+
+                if not files:
+                    messages.error(request, 'Please select at least one image')
                     return redirect('transcriber:index')
-                    
+
+                # Create transcription batch
+                transcription = ImageTranscription(custom_prompt=custom_prompt if custom_prompt else None)
+                transcription.save()
+
+                # Process each image
+                service = TranscriptionService()
+                all_texts = []
+                error_occurred = False
+
+                for page_num, file in enumerate(files, 1):
+                    try:
+                        # Save TranscriptionImage
+                        trans_image = TranscriptionImage(
+                            transcription=transcription,
+                            page_number=page_num
+                        )
+                        trans_image.image.save(file.name, file, save=True)
+
+                        # Process the image
+                        result = service.process_image(
+                            trans_image.image.path,
+                            capitalization_type='all',
+                            custom_prompt=None
+                        )
+
+                        if result['success']:
+                            trans_image.individual_text = result['original_text']
+                            trans_image.save()
+                            all_texts.append(f"--- Image {page_num} ---\n\n{result['original_text']}")
+                        else:
+                            error_occurred = True
+                            all_texts.append(f"--- Image {page_num} ---\n\n[Error: {result['error']}]")
+
+                    except Exception as e:
+                        error_occurred = True
+                        all_texts.append(f"--- Image {page_num} ---\n\n[Error processing image: {str(e)}]")
+
+                # Combine all texts
+                combined_text = "\n\n".join(all_texts)
+
+                # Format combined text
+                formatted_text = service.format_text(combined_text, 'all')
+
+                # Save transcription
+                transcription.original_text = combined_text
+                transcription.formatted_text = combined_text
+                transcription.capitalized_text = formatted_text
+
+                # Process custom prompt on combined text if provided
+                if custom_prompt:
+                    custom_response = service.process_custom_prompt(combined_text, custom_prompt)
+                    transcription.custom_response = custom_response
+
+                if not error_occurred:
+                    transcription.is_processed = True
+                    messages.success(request, f'Successfully transcribed {len(files)} image(s)!')
+                else:
+                    transcription.error_message = 'Some images failed to process'
+                    messages.warning(request, 'Some images failed to process but results are available')
+
+                transcription.save()
+                return redirect('transcriber:detail', pk=transcription.id)
+
             except Exception as e:
-                messages.error(request, f"Error processing image: {str(e)}")
+                messages.error(request, f"Error processing images: {str(e)}")
                 return redirect('transcriber:index')
         else:
             messages.error(request, 'Invalid form submission')
             return redirect('transcriber:index')
-    
+
     return redirect('transcriber:index')
 
 

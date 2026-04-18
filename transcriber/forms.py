@@ -1,23 +1,24 @@
 from django import forms
 from .models import ImageTranscription
 
-class ImageUploadForm(forms.ModelForm):
-    class Meta:
-        model = ImageTranscription
-        fields = ['image', 'custom_prompt']
-        widgets = {
-            'image': forms.FileInput(attrs={
-                'class': 'form-control',
-                'accept': 'image/*',
-                'required': True
-            }),
-            'custom_prompt': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Optional: Enter specific instructions (e.g., "Format as a CSV", "Extract only names", "Convert to JSON")',
-                'help_text': 'Enter any specific instructions for processing the transcribed text'
-            })
-        }
+class ImageUploadForm(forms.Form):
+    images = forms.FileField(
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*'
+        }),
+        label='Images',
+        required=False
+    )
+    custom_prompt = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Optional: Enter specific instructions (e.g., "Format as a CSV", "Extract only names", "Convert to JSON")',
+        }),
+        required=False,
+        label='Custom Instructions'
+    )
 
 class TextFormatForm(forms.Form):
     CAPITALIZE_CHOICES = [

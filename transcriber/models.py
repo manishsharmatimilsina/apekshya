@@ -20,3 +20,19 @@ class ImageTranscription(models.Model):
 
     def __str__(self):
         return f"Transcription {self.id} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+
+class TranscriptionImage(models.Model):
+    transcription = models.ForeignKey(ImageTranscription, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='transcriptions/')
+    page_number = models.PositiveIntegerField(default=1)
+    individual_text = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['page_number']
+        verbose_name = 'Transcription Image'
+        verbose_name_plural = 'Transcription Images'
+
+    def __str__(self):
+        return f"Image {self.page_number} of Transcription {self.transcription.id}"
