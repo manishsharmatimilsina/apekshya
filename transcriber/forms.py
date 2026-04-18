@@ -5,8 +5,7 @@ class ImageUploadForm(forms.Form):
     images = forms.FileField(
         widget=forms.FileInput(attrs={
             'class': 'form-control',
-            'accept': 'image/*',
-            'multiple': True
+            'accept': 'image/*'
         }),
         label='Images',
         required=True
