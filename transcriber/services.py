@@ -61,7 +61,7 @@ class TranscriptionService:
                             },
                             {
                                 "type": "text",
-                                "text": "Please transcribe all the text you can see in this image. Provide accurate text transcription without any modifications."
+                                "text": "Transcribe all text visible in this image. Output only the transcribed text, nothing else."
                             }
                         ],
                     }
