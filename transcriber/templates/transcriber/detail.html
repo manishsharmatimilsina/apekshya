@@ -1,0 +1,287 @@
+{% extends "transcriber/base.html" %}
+
+{% block title %}Transcription #{{ transcription.id }} - Image Transcriber{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <a href="{% url 'transcriber:history' %}" class="btn btn-secondary mb-4">
+            <i class="fas fa-arrow-left"></i> Back to History
+        </a>
+
+        {% if transcription.is_processed and transcription.original_text %}
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="mb-0"><i class="fas fa-check-circle text-success"></i> Transcription Successful</h3>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge bg-success">Processed</span>
+                            <span class="badge bg-info">ID: {{ transcription.id }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block mb-2">Created</small>
+                            <strong>{{ transcription.created_at|date:"Y-m-d H:i" }}</strong>
+                        </div>
+                        <div class="col-md-6">
+                            {% if transcription.image %}
+                                <small class="text-muted d-block mb-2">Image</small>
+                                <img src="{{ transcription.image.url }}" alt="Uploaded image" style="max-width: 300px; border-radius: 5px;">
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Original Text -->
+                    <div class="mb-4">
+                        <h5><i class="fas fa-file-alt"></i> Original Text</h5>
+                        <div class="text-output" style="max-height: 300px; overflow-y: auto;">
+                            {{ transcription.original_text }}
+                        </div>
+                    </div>
+
+                    <!-- Formatted Text -->
+                    <div class="mb-4">
+                        <h5><i class="fas fa-heading"></i> Formatted Text (ALL CAPS)</h5>
+                        <div class="text-output" style="max-height: 300px; overflow-y: auto;">
+                            <strong>{{ transcription.capitalized_text }}</strong>
+                        </div>
+                    </div>
+
+                    <!-- Format Options -->
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title mb-3"><i class="fas fa-sliders-h"></i> Format Options</h6>
+                            <form id="reformatForm">
+                                {% csrf_token %}
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="capitalization" id="caps" value="all" checked>
+                                    <label class="btn btn-outline-primary" for="caps">
+                                        <i class="fas fa-arrow-up"></i> ALL CAPS
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="capitalization" id="title" value="title">
+                                    <label class="btn btn-outline-primary" for="title">
+                                        <i class="fas fa-heading"></i> Title Case
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="capitalization" id="sentence" value="sentence">
+                                    <label class="btn btn-outline-primary" for="sentence">
+                                        <i class="fas fa-font"></i> Sentence case
+                                    </label>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Custom Prompt Section -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-info">
+                            <h6 class="mb-0"><i class="fas fa-lightbulb"></i> Custom Instructions</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">
+                                Ask AI anything about the text or request a specific format:
+                            </p>
+                            
+                            <form id="customPromptForm" class="mb-3">
+                                {% csrf_token %}
+                                <div class="input-group">
+                                    <textarea 
+                                        id="customPromptInput" 
+                                        class="form-control" 
+                                        rows="2"
+                                        placeholder="e.g., 'Extract only the names', 'Format as CSV', 'Summarize in 50 words', 'Remove all numbers'">
+                                    </textarea>
+                                    <button class="btn btn-info" type="submit">
+                                        <i class="fas fa-send"></i> Send
+                                    </button>
+                                </div>
+                            </form>
+
+                            {% if transcription.custom_response %}
+                                <div class="alert alert-info mb-0">
+                                    <h6><i class="fas fa-robot"></i> AI Response:</h6>
+                                    <p class="mb-0">{{ transcription.custom_response }}</p>
+                                </div>
+                            {% endif %}
+
+                            <div id="customResponseContainer" style="display: none;">
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-robot"></i> AI Response:</h6>
+                                    <p id="customResponse" class="mb-0"></p>
+                                </div>
+                            </div>
+
+                            <div id="customLoadingSpinner" class="text-center mt-3" style="display: none;">
+                                <div class="spinner-border spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Processing your request...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary" onclick="copyToClipboard()">
+                            <i class="fas fa-copy"></i> Copy Text
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="downloadAsText()">
+                            <i class="fas fa-download"></i> Download as Text
+                        </button>
+                        <a href="{% url 'transcriber:index' %}" class="btn btn-success">
+                            <i class="fas fa-plus"></i> New Transcription
+                        </a>
+                        <form method="post" action="{% url 'transcriber:delete' transcription.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure?')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        {% elif transcription.error_message %}
+            <div class="card">
+                <div class="card-header bg-danger">
+                    <h3 class="mb-0"><i class="fas fa-times-circle"></i> Transcription Error</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger mb-0">
+                        <h6>Error Details:</h6>
+                        <p>{{ transcription.error_message }}</p>
+                    </div>
+                    <a href="{% url 'transcriber:index' %}" class="btn btn-primary mt-4">
+                        <i class="fas fa-redo"></i> Try Again
+                    </a>
+                </div>
+            </div>
+
+        {% else %}
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h3 class="mb-0"><i class="fas fa-hourglass-half"></i> Processing</h3>
+                </div>
+                <div class="card-body text-center">
+                    <div class="spinner-border text-primary mb-4" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Your image is being processed. Please wait...</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Format change handler
+    document.querySelectorAll('input[name="capitalization"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            reformatText(this.value);
+        });
+    });
+
+    function reformatText(type) {
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch('{% url "transcriber:reformat" transcription.id %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                capitalization_type: type
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the formatted text display
+                document.querySelectorAll('.text-output')[1].innerHTML = '<strong>' + data.formatted_text.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</strong>';
+            } else {
+                alert('Error formatting text: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    // Custom prompt form handler
+    document.getElementById('customPromptForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const prompt = document.getElementById('customPromptInput').value.trim();
+        
+        if (!prompt) {
+            alert('Please enter a prompt or question');
+            return;
+        }
+        
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const loadingSpinner = document.getElementById('customLoadingSpinner');
+        const responseContainer = document.getElementById('customResponseContainer');
+        
+        // Show loading spinner
+        loadingSpinner.style.display = 'block';
+        responseContainer.style.display = 'none';
+        
+        fetch('{% url "transcriber:custom_prompt" transcription.id %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({
+                prompt: prompt
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingSpinner.style.display = 'none';
+            
+            if (data.success) {
+                document.getElementById('customResponse').innerHTML = data.response.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+                responseContainer.style.display = 'block';
+                document.getElementById('customPromptInput').value = '';
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            loadingSpinner.style.display = 'none';
+            console.error('Error:', error);
+            alert('Error processing prompt');
+        });
+    });
+
+    function copyToClipboard() {
+        const text = document.querySelectorAll('.text-output')[1].textContent.trim();
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Text copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+        });
+    }
+
+    function downloadAsText() {
+        const text = document.querySelectorAll('.text-output')[1].textContent.trim();
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', 'transcription_' + {{ transcription.id }} + '.txt');
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    }
+</script>
+{% endblock %}

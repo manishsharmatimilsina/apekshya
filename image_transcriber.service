@@ -1,0 +1,23 @@
+[Unit]
+Description=Image Transcriber Gunicorn Application
+After=network.target
+
+[Service]
+User=django
+Group=www-data
+WorkingDirectory=/home/django/ImageTranscriber
+Environment="PATH=/home/django/ImageTranscriber/venv/bin"
+ExecStart=/home/django/ImageTranscriber/venv/bin/gunicorn \
+    --workers 3 \
+    --worker-class sync \
+    --bind 127.0.0.1:8000 \
+    --timeout 300 \
+    --access-logfile /var/log/image_transcriber/access.log \
+    --error-logfile /var/log/image_transcriber/error.log \
+    config.wsgi:application
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
