@@ -8,7 +8,7 @@ class ImageUploadForm(forms.Form):
             'accept': 'image/*'
         }),
         label='Images',
-        required=True
+        required=False
     )
     custom_prompt = forms.CharField(
         widget=forms.Textarea(attrs={
