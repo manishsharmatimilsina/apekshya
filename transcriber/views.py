@@ -53,11 +53,15 @@ def index(request):
 def upload_image(request):
     """Handle multiple image uploads and transcription"""
     if request.method == 'POST':
+        import sys
+        print(f"DEBUG: request.FILES keys: {list(request.FILES.keys())}", file=sys.stderr)
+        print(f"DEBUG: request.POST keys: {list(request.POST.keys())}", file=sys.stderr)
         form = ImageUploadForm(request.POST, request.FILES)
         if form.is_valid():
             try:
                 # Get uploaded files and custom prompt
                 files = request.FILES.getlist('images')
+                print(f"DEBUG: files count: {len(files)}", file=sys.stderr)
                 custom_prompt = form.cleaned_data.get('custom_prompt', '').strip()
 
                 if not files:
