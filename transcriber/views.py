@@ -2,6 +2,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.forms import UserCreationForm
 from django.core.paginator import Paginator
 from django.core.files.base import ContentFile
 import json
@@ -12,6 +15,30 @@ from .forms import ImageUploadForm, TextFormatForm, CustomPromptForm
 from .services import TranscriptionService
 
 
+def register(request):
+    """Register a new user"""
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, f'Welcome, {user.username}! Your account has been created.')
+            return redirect('transcriber:index')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field}: {error}')
+    else:
+        form = UserCreationForm()
+
+    context = {
+        'form': form,
+        'page_title': 'Register'
+    }
+    return render(request, 'transcriber/register.html', context)
+
+
+@login_required
 def index(request):
     """Home page with upload form"""
     form = ImageUploadForm()
@@ -22,6 +49,7 @@ def index(request):
     return render(request, 'transcriber/index.html', context)
 
 
+@login_required
 def upload_image(request):
     """Handle multiple image uploads and transcription"""
     if request.method == 'POST':
@@ -37,7 +65,10 @@ def upload_image(request):
                     return redirect('transcriber:index')
 
                 # Create transcription batch
-                transcription = ImageTranscription(custom_prompt=custom_prompt if custom_prompt else None)
+                transcription = ImageTranscription(
+                    user=request.user,
+                    custom_prompt=custom_prompt if custom_prompt else None
+                )
                 transcription.save()
 
                 # Process each image
@@ -109,9 +140,10 @@ def upload_image(request):
     return redirect('transcriber:index')
 
 
+@login_required
 def detail(request, pk):
     """Display transcription details"""
-    transcription = get_object_or_404(ImageTranscription, pk=pk)
+    transcription = get_object_or_404(ImageTranscription, pk=pk, user=request.user)
     format_form = TextFormatForm()
     custom_prompt_form = CustomPromptForm()
     
@@ -124,10 +156,11 @@ def detail(request, pk):
     return render(request, 'transcriber/detail.html', context)
 
 
+@login_required
 def reformat_text(request, pk):
     """Reformat text with different capitalization"""
     if request.method == 'POST':
-        transcription = get_object_or_404(ImageTranscription, pk=pk)
+        transcription = get_object_or_404(ImageTranscription, pk=pk, user=request.user)
         
         try:
             data = json.loads(request.body)
@@ -162,10 +195,11 @@ def reformat_text(request, pk):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
+@login_required
 def process_custom_prompt(request, pk):
     """Process custom prompt for transcribed text"""
     if request.method == 'POST':
-        transcription = get_object_or_404(ImageTranscription, pk=pk)
+        transcription = get_object_or_404(ImageTranscription, pk=pk, user=request.user)
         
         try:
             data = json.loads(request.body)
@@ -208,13 +242,14 @@ def process_custom_prompt(request, pk):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
+@login_required
 def history(request):
     """Display transcription history"""
-    transcriptions_list = ImageTranscription.objects.all()
+    transcriptions_list = ImageTranscription.objects.filter(user=request.user)
     paginator = Paginator(transcriptions_list, 10)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
         'page_obj': page_obj,
         'page_title': 'Transcription History'
@@ -222,22 +257,24 @@ def history(request):
     return render(request, 'transcriber/history.html', context)
 
 
+@login_required
 def delete_transcription(request, pk):
     """Delete a transcription"""
-    transcription = get_object_or_404(ImageTranscription, pk=pk)
-    
+    transcription = get_object_or_404(ImageTranscription, pk=pk, user=request.user)
+
     if request.method == 'POST':
         transcription.delete()
         messages.success(request, 'Transcription deleted successfully!')
         return redirect('transcriber:history')
-    
+
     return redirect('transcriber:detail', pk=pk)
 
 
+@login_required
 @require_http_methods(["GET"])
 def api_transcription(request, pk):
     """API endpoint to get transcription data"""
-    transcription = get_object_or_404(ImageTranscription, pk=pk)
+    transcription = get_object_or_404(ImageTranscription, pk=pk, user=request.user)
     
     data = {
         'id': transcription.id,

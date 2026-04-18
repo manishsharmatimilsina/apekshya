@@ -1,7 +1,9 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 class ImageTranscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     image = models.ImageField(upload_to='transcriptions/', null=True, blank=True)
     original_text = models.TextField(null=True, blank=True)
     formatted_text = models.TextField(null=True, blank=True)

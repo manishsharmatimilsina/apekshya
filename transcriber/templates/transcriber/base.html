@@ -174,12 +174,35 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'transcriber:index' %}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'transcriber:history' %}">History</a>
-                    </li>
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'transcriber:index' %}">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'transcriber:history' %}">History</a>
+                        </li>
+                        <li class="nav-item ms-3">
+                            <span class="nav-link text-white">
+                                <i class="fas fa-user-circle"></i> {{ user.username }}
+                            </span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'transcriber:logout' %}">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'transcriber:login' %}">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'transcriber:register' %}">
+                                <i class="fas fa-user-plus"></i> Register
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
@@ -201,8 +224,7 @@
 
     <footer>
         <div class="container">
-            <p>&copy; 2024 Image Transcriber for Dr. Apekshya Bhattarai. All rights reserved.</p>
-            <p>Powered by OpenAI Vision API</p>
+            <p>&copy; 2026 Image Transcriber for Dr. Apekshya Bhattarai. All rights reserved.</p>
             <p>Powered by Manish ❤️</p>
         </div>
     </footer>
