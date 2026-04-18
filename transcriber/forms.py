@@ -5,10 +5,11 @@ class ImageUploadForm(forms.Form):
     images = forms.FileField(
         widget=forms.FileInput(attrs={
             'class': 'form-control',
-            'accept': 'image/*'
+            'accept': 'image/*',
+            'multiple': True
         }),
         label='Images',
-        required=False
+        required=True
     )
     custom_prompt = forms.CharField(
         widget=forms.Textarea(attrs={
