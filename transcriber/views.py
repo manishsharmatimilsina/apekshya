@@ -134,7 +134,8 @@ def upload_image(request):
                 messages.error(request, f"Error processing images: {str(e)}")
                 return redirect('transcriber:index')
         else:
-            messages.error(request, 'Invalid form submission')
+            error_details = ', '.join([f"{field}: {', '.join(errors)}" for field, errors in form.errors.items()])
+            messages.error(request, f'Form error: {error_details if error_details else "Unknown error"}')
             return redirect('transcriber:index')
 
     return redirect('transcriber:index')
