@@ -9,7 +9,7 @@ import re
 class TranscriptionService:
     def __init__(self):
         self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = "gpt-4o"
+        self.model = "gpt-5.4"
 
     def encode_image_to_base64(self, image_path):
         """Encode image file to base64 string"""
