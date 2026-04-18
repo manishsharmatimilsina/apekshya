@@ -35,18 +35,18 @@ class TranscriptionService:
                 '.gif': 'image/gif',
                 '.webp': 'image/webp'
             }
-            
+
             file_ext = path.suffix.lower()
             if file_ext not in media_type_map:
                 raise Exception(f"Unsupported image format: {file_ext}")
-            
+
             media_type = media_type_map[file_ext]
 
             # Encode image to base64
             base64_image = self.encode_image_to_base64(image_path)
 
             # Call OpenAI Vision API
-            response = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=4096,
                 messages=[
@@ -54,11 +54,9 @@ class TranscriptionService:
                         "role": "user",
                         "content": [
                             {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": media_type,
-                                    "data": base64_image,
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{media_type};base64,{base64_image}",
                                 },
                             },
                             {
@@ -71,7 +69,7 @@ class TranscriptionService:
             )
 
             # Extract transcribed text
-            transcribed_text = response.content[0].text
+            transcribed_text = response.choices[0].message.content
             return transcribed_text
 
         except openai.APIError as e:
@@ -133,19 +131,19 @@ class TranscriptionService:
     def process_custom_prompt(self, text, prompt):
         """
         Process transcribed text with a custom prompt/instruction
-        
+
         Args:
             text: The transcribed text
             prompt: Custom instruction or question
-        
+
         Returns:
             Response from OpenAI based on the custom prompt
         """
         try:
             if not text or not prompt:
                 return None
-            
-            response = self.client.messages.create(
+
+            response = self.client.chat.completions.create(
                 model=self.model,
                 max_tokens=4096,
                 messages=[
@@ -155,9 +153,9 @@ class TranscriptionService:
                     }
                 ],
             )
-            
-            return response.content[0].text
-        
+
+            return response.choices[0].message.content
+
         except openai.APIError as e:
             raise Exception(f"OpenAI API Error: {str(e)}")
         except Exception as e:
