@@ -61,7 +61,33 @@ class TranscriptionService:
                             },
                             {
                                 "type": "text",
-                                "text": "Transcribe all text visible in this image. Output only the transcribed text, nothing else."
+                                "text": """You are an expert medical transcription assistant.
+
+I will provide you with images of handwritten or printed medical documents (case sheets, inpatient records, prescriptions, etc.).
+
+Your task is to:
+
+1. Accurately transcribe ALL visible text from the image.
+2. Preserve the original structure as much as possible (headings, sections, bullet points).
+3. Organize the output into clean, readable sections such as:
+   - Patient Information
+   - Chief Complaints
+   - History (Present, Past, Family, Drug, Personal)
+   - Examination / Findings
+   - Diagnosis / Impression
+   - Investigations
+   - Treatment / Prescription
+4. Expand unclear handwriting carefully using medical context (e.g., "Na⁺", "HTN", "IV NS").
+5. If something is unclear or partially illegible:
+   - Write your best interpretation
+   - Add "(unclear)" next to it
+6. Do NOT hallucinate missing data.
+7. Maintain medical terminology correctly.
+8. Convert shorthand into standard form where appropriate (e.g., "OD" → once daily, "BD" → twice daily).
+9. Keep formatting clean and professional using headings and bullet points.
+
+Output format:
+Clean, structured, and easy-to-read medical transcription (NOT raw text dump)."""
                             }
                         ],
                     }
